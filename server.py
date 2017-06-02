@@ -2,6 +2,7 @@
 
 import os
 import tornado.ioloop
+import subprocess
 import tornado.web
 import uuid
 from tornado.options import define, options, parse_command_line
@@ -49,7 +50,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
               output.write(image_file.read())
 
     def generate_ortho(self):
-        os.system("/code/run.py --project-path /code/ --opensfm-processes 4")
+        subprocess.call(['python', '/code/run.py', '--opensfm-processes', '4', 'code'])
         res = { 'success': True }
         return json.dumps(res)
 
