@@ -27,11 +27,18 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def post(self):
         req = json.loads(self.request.body)
-        for name in os.listdir(WORK_DIR):
-            logging.info(name)
-        self.finish()
-        self.download_urls(req['urls'])
-        self.generate_ortho(req['id'], req['uploadOrthoEndpoint'])
+        ortho_in_progress = not self.is_work_dir_empty()
+        if ortho_in_progress:
+            logging.info("work dir is not empty, ortho in progress")
+            self.set_status(429, "orthomosaic generation already in progress, please try again")
+            self.finish()
+        else:
+            self.finish()
+            self.download_urls(req['urls'])
+            self.generate_ortho(req['id'], req['uploadOrthoEndpoint'])
+
+    def is_work_dir_empty(self):
+        return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
 
     def download_urls(self, urls):
         for image_url in urls:
@@ -57,6 +64,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             logging.info(r.text)
         finally:
             file.close()
+        # TODO delete everything in the work dir so the next ortho can be processed
 
 def main():
     parse_command_line()
