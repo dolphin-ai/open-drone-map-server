@@ -27,13 +27,13 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def post(self):
         req = json.loads(self.request.body)
-        self.download_urls(req['urls'])
-        res = self.generate_ortho()
-        self.write(res)
+        for name in os.listdir(WORK_DIR):
+            logging.info(name)
         self.finish()
+        self.download_urls(req['urls'])
+        self.generate_ortho(req['id'], req['uploadOrthoEndpoint'])
 
     def download_urls(self, urls):
-        # get the file ext
         for image_url in urls:
             logging.info("downloading %s", image_url)
             res = requests.head(image_url)
@@ -42,17 +42,21 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             if ext == '.jpe':
                 ext = '.jpg'
 
-            # write file to disk
             filename = str(uuid.uuid4()) + ext
             filepath = os.path.join(WORK_DIR, filename)
             image_file = urllib2.urlopen(image_url)
             with open(filepath, 'wb') as output:
               output.write(image_file.read())
 
-    def generate_ortho(self):
+    def generate_ortho(self, id, endpoint):
         subprocess.call(['python', '/code/run.py', '--opensfm-processes', '4', 'code'])
-        res = { 'success': True }
-        return json.dumps(res)
+        file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
+        files = {'file': file}
+        try:
+            r = requests.post(endpoint + '?id=' + str(id), files=files)
+            logging.info(r.text)
+        finally:
+            file.close()
 
 def main():
     parse_command_line()
