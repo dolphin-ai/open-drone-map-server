@@ -12,6 +12,7 @@ import urllib2
 import requests
 import json
 import logging
+import shutil
 
 WORK_DIR = './images'
 
@@ -40,6 +41,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     def is_work_dir_empty(self):
         return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
 
+    def empty_work_dir(self):
+        shutil.rmtree(WORK_DIR + '/*')
+
     def download_urls(self, urls):
         for image_url in urls:
             logging.info("downloading %s", image_url)
@@ -64,7 +68,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             logging.info(r.text)
         finally:
             file.close()
-        # TODO delete everything in the work dir so the next ortho can be processed
+        self.empty_work_dir()
 
 def main():
     parse_command_line()
