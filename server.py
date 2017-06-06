@@ -53,7 +53,8 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def ortho_job_complete(self, job_id):
         filepath = self.ortho_image_path_for_job_id(job_id)
-        return os.path.isfile(filepath )
+        print filepath
+        return os.path.isfile(filepath)
 
     def ortho_image_path_for_job_id(self, job_id):
         job_id = str(job_id)
@@ -102,7 +103,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         self.send_generated_ortho_to_requester(id, endpoint, ortho_image_pathjob_dir)
 
     def get_job_output_dir(self, id):
-        dir = os.path.join(OUTPUT_DIR, id)
+        dir = os.path.join(OUTPUT_DIR, str(id))
         if not os.path.exists(dir):
             os.makedirs(dir)
         return dir
