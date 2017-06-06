@@ -60,7 +60,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
               output.write(image_file.read())
 
     def generate_ortho(self, id, endpoint):
-        odm_log = open("odm_log", "w")
+        odm_log = open("./logs/odm_log", "w")
         subprocess.call(
             ['python', '/code/run.py', '--opensfm-processes', '8', '--rerun_all', 'true', 'code'],
             stdout=odm_log,
@@ -77,7 +77,6 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
 def main():
     parse_command_line()
-    print options
 
     routes = [
         (r"/", HealthCheckHandler),
@@ -89,7 +88,7 @@ def main():
         debug=options.debug
     )
     app.listen(options.port)
-    print '[server] listening on port', options.port
+    logging.info('[server] listening on port %d', options.port)
     tornado.ioloop.IOLoop.current().start()
 
 if __name__ == "__main__":
