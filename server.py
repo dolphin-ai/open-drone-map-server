@@ -14,6 +14,8 @@ import json
 import logging
 from shutil import copyfile
 
+OPEN_SFM_PROCESSES = '8'
+
 WORK_DIR = '/code/images'
 OUTPUT_DIR = '/code/jobs'
 ODM_PHOTO_DIR = '/code/odm_orthophoto'
@@ -99,7 +101,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         id = str(id)
         odm_log = open("/code/logs/odm_log", "w")
         subprocess.call(
-            ['python', '/code/run.py', '--opensfm-processes', '8', 'code'],
+            ['python', '/code/run.py', '--opensfm-processes', OPEN_SFM_PROCESSES, 'code'],
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
