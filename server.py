@@ -14,7 +14,9 @@ import json
 import logging
 import shutil
 
-WORK_DIR = './images'
+WORK_DIR = '/code/images'
+ODM_PHOTO_DIR = '/code/odm_orthophoto'
+ODM_TEXTURE_DIR = '/code/odm_texturing'
 
 define("port", default=5000, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
@@ -35,6 +37,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             self.finish()
         else:
             self.finish()
+            self.empty_odm_dirs()
             self.download_urls(req['urls'])
             self.generate_ortho(req['id'], req['uploadOrthoEndpoint'])
 
@@ -43,6 +46,11 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def empty_work_dir(self):
         shutil.rmtree(WORK_DIR + '/*')
+        self.empty_odm_dirs()
+
+    def empty_odm_dirs(self):
+        shutil.rmtree(ODM_PHOTO_DIR + '/*')
+        shutil.rmtree(ODM_TEXTURE_DIR + '/*')
 
     def download_urls(self, urls):
         for image_url in urls:
