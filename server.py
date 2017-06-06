@@ -32,7 +32,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     def post(self):
         req = json.loads(self.request.body)
 
-        if ortho_job_complete(req['id']):
+        if self.ortho_job_complete(req['id']):
             ortho_image_path = self.ortho_image_path_for_job_id(req['id'])
             self.send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
             self.finish()
