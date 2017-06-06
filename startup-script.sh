@@ -1,6 +1,6 @@
 #! /bin/sh
 cd /home/nicholashughes/open-drone-map-server
-git pull
+sudo git pull
 sudo docker build -t dolphin-ai:odm .
 sudo docker run -i -p 80:5000 \
   -v log:log \
