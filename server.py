@@ -12,9 +12,10 @@ import urllib2
 import requests
 import json
 import logging
-import shutil
+from shutil import copyfile
 
 WORK_DIR = '/code/images'
+OUTPUT_DIR = '/code/jobs'
 ODM_PHOTO_DIR = '/code/odm_orthophoto'
 ODM_TEXTURE_DIR = '/code/odm_texturing'
 
@@ -79,6 +80,10 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
+        output_dir = os.path.join(OUTPUT_DIR, id)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        copyfile('./odm_orthophoto/odm_orthophoto.png', output_dir)
         file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
         files = {'file': file}
         logging.info('Sending odm_orthophoto.png for project %s to %s', str(id), endpoint)
