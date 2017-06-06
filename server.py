@@ -45,12 +45,16 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
 
     def empty_work_dir(self):
-        shutil.rmtree(WORK_DIR + '/*')
+        logging.info('Emptying work dirs')
+        shutil.rmtree(WORK_DIR)
+        os.makedirs(WORK_DIR)
         self.empty_odm_dirs()
 
     def empty_odm_dirs(self):
-        shutil.rmtree(ODM_PHOTO_DIR + '/*')
-        shutil.rmtree(ODM_TEXTURE_DIR + '/*')
+        shutil.rmtree(ODM_PHOTO_DIR)
+        shutil.rmtree(ODM_TEXTURE_DIR)
+        os.makedirs(ODM_PHOTO_DIR)
+        os.makedirs(ODM_TEXTURE_DIR)
 
     def download_urls(self, urls):
         for image_url in urls:
