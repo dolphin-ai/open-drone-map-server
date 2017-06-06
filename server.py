@@ -32,9 +32,13 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     def post(self):
         req = json.loads(self.request.body)
 
-        if self.ortho_job_complete(req['id']):
-            ortho_image_path = self.ortho_image_path_for_job_id(req['id'])
-            self.send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
+        job_id = str(req['id'])
+        image_urls = req['urls']
+        endpoint = str(req['uploadOrthoEndpoint'])
+
+        if self.ortho_job_complete(job_id):
+            ortho_image_path = self.ortho_image_path_for_job_id(job_id)
+            self.send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
             self.finish()
 
         ortho_in_progress = not self.is_work_dir_empty()
@@ -45,8 +49,8 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         else:
             self.finish()
             self.empty_odm_dirs()
-            self.download_urls(req['urls'])
-            self.generate_ortho(req['id'], req['uploadOrthoEndpoint'])
+            self.download_urls(image_urls)
+            self.generate_ortho(job_id, endpoint)
 
     def is_work_dir_empty(self):
         return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
