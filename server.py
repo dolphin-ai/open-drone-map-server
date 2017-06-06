@@ -55,7 +55,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def empty_dir(self, dir):
         for f in os.listdir(dir):
-            os.remove(f)
+            os.remove(os.path.join(dir, f))
 
     def download_urls(self, urls):
         for image_url in urls:
