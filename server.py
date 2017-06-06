@@ -74,6 +74,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
               output.write(image_file.read())
 
     def generate_ortho(self, id, endpoint):
+        id = str(id)
         odm_log = open("/code/logs/odm_log", "w")
         subprocess.call(
             ['python', '/code/run.py', '--opensfm-processes', '8', 'code'],
@@ -86,9 +87,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         copyfile('./odm_orthophoto/odm_orthophoto.png', output_dir)
         file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
         files = {'file': file}
-        logging.info('Sending odm_orthophoto.png for project %s to %s', str(id), endpoint)
+        logging.info('Sending odm_orthophoto.png for project %s to %s', id, endpoint)
         try:
-            r = requests.post(endpoint + '?id=' + str(id), files=files)
+            r = requests.post(endpoint + '?id=' + id, files=files)
         except:
             logging.info(r.text)
         finally:
