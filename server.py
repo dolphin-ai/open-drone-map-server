@@ -62,7 +62,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     def generate_ortho(self, id, endpoint):
         odm_log = open("/code/logs/odm_log", "w")
         subprocess.call(
-            ['python', '/code/run.py', '--opensfm-processes', '8', '--rerun_all', 'true', 'code'],
+            ['python', '/code/run.py', '--opensfm-processes', '8', 'code'],
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
