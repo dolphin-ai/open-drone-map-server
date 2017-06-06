@@ -118,8 +118,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         logging.info('Sending %s for project %s to %s', image_path, id, endpoint)
         try:
             r = requests.post(endpoint + '?id=' + id, files=files)
-        except:
             logging.info(r.text)
+        except:
+            logging.info('exception caught')
         finally:
             file.close()
             self.empty_work_dir()
