@@ -93,7 +93,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             logging.info(r.text)
         finally:
             file.close()
-        self.empty_work_dir()
+            self.empty_work_dir()
 
 def main():
     parse_command_line()

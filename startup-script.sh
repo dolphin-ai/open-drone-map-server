@@ -6,6 +6,7 @@ sudo docker build -t dolphin-ai:odm .
 sudo docker run -d -p 80:5000 \
   -v $(pwd)/logs:/code/logs \
   -v $(pwd)/images:/code/images \
+  -v $(pwd)/jobs:/code/jobs \
   -v $(pwd)/odm_orthophoto:/code/odm_orthophoto \
   -v $(pwd)/odm_texturing:/code/odm_texturing \
   dolphin-ai:odm
