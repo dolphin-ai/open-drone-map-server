@@ -59,7 +59,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     def ortho_image_path_for_job_id(self, job_id):
         job_id = str(job_id)
         job_dir = self.get_job_output_dir(job_id)
-        ortho_image_path = os.path.join(job_dir, 'odm_orthophoto.png')
+        return os.path.join(job_dir, 'odm_orthophoto.png')
 
     def empty_work_dir(self):
         logging.info('Emptying work dirs')
