@@ -68,6 +68,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         )
         file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
         files = {'file': file}
+        logging.info('Sending odm_orthophoto.png for project %s to %s', str(id), endpoint)
         try:
             r = requests.post(endpoint + '?id=' + str(id), files=files)
             logging.info(r.text)
