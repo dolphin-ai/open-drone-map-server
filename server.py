@@ -53,7 +53,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def ortho_job_complete(self, job_id):
         filepath = self.ortho_image_path_for_job_id(job_id)
-        print filepath
+        print 'filepath: ', filepath
         return os.path.isfile(filepath)
 
     def ortho_image_path_for_job_id(self, job_id):
