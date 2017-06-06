@@ -31,6 +31,12 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def post(self):
         req = json.loads(self.request.body)
+
+        if ortho_job_complete(req['id']):
+            ortho_image_path = self.ortho_image_path_for_job_id(req['id'])
+            self.send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
+            self.finish()
+
         ortho_in_progress = not self.is_work_dir_empty()
         if ortho_in_progress:
             logging.info("work dir is not empty, ortho in progress")
@@ -44,6 +50,15 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def is_work_dir_empty(self):
         return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
+
+    def ortho_job_complete(self, job_id):
+        filepath = self.ortho_image_path_for_job_id(job_id)
+        return os.path.isfile(filepath )
+
+    def ortho_image_path_for_job_id(self, job_id):
+        job_id = str(job_id)
+        job_dir = self.get_job_output_dir(job_id)
+        ortho_image_path = os.path.join(job_dir, 'odm_orthophoto.png')
 
     def empty_work_dir(self):
         logging.info('Emptying work dirs')
@@ -82,8 +97,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             stderr=subprocess.STDOUT
         )
         job_dir = self.get_job_output_dir(id)
-        copyfile('./odm_orthophoto/odm_orthophoto.png', os.path.join(job_dir, 'odm_orthophoto.png'))
-        self.send_generated_ortho_to_requester(id, endpoint, job_dir)
+        ortho_image_path = os.path.join(job_dir, 'odm_orthophoto.png')
+        copyfile('./odm_orthophoto/odm_orthophoto.png', ortho_image_path)
+        self.send_generated_ortho_to_requester(id, endpoint, ortho_image_pathjob_dir)
 
     def get_job_output_dir(self, id):
         dir = os.path.join(OUTPUT_DIR, id)
@@ -91,10 +107,10 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             os.makedirs(dir)
         return dir
 
-    def send_generated_ortho_to_requester(self, id, endpoint):
-        file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
+    def send_generated_ortho_to_requester(self, id, endpoint, image_path):
+        file = open(image_path, 'rb')
         files = {'file': file}
-        logging.info('Sending odm_orthophoto.png for project %s to %s', id, endpoint)
+        logging.info('Sending %s for project %s to %s', image_path, id, endpoint)
         try:
             r = requests.post(endpoint + '?id=' + id, files=files)
         except:
