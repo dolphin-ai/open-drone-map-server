@@ -81,10 +81,17 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
-        output_dir = os.path.join(OUTPUT_DIR, id)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        copyfile('./odm_orthophoto/odm_orthophoto.png', output_dir)
+        job_dir = self.get_job_output_dir(id)
+        copyfile('./odm_orthophoto/odm_orthophoto.png', os.path.join(job_dir, 'odm_orthophoto.png'))
+        self.send_generated_ortho_to_requester(id, endpoint, job_dir)
+
+    def get_job_output_dir(self, id):
+        dir = os.path.join(OUTPUT_DIR, id)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        return dir
+
+    def send_generated_ortho_to_requester(self, id, endpoint):
         file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
         files = {'file': file}
         logging.info('Sending odm_orthophoto.png for project %s to %s', id, endpoint)
