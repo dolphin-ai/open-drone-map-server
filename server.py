@@ -60,7 +60,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
               output.write(image_file.read())
 
     def generate_ortho(self, id, endpoint):
-        subprocess.call(['python', '/code/run.py', '--opensfm-processes', '4', 'code'])
+        subprocess.call(['python', '/code/run.py', '--opensfm-processes', '8', 'code'])
         file = open('./odm_orthophoto/odm_orthophoto.png', 'rb')
         files = {'file': file}
         try:
