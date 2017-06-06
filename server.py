@@ -108,7 +108,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         job_dir = self.get_job_output_dir(id)
         ortho_image_path = os.path.join(job_dir, 'odm_orthophoto.png')
         copyfile('./odm_orthophoto/odm_orthophoto.png', ortho_image_path)
-        self.send_generated_ortho_to_requester(id, endpoint, ortho_image_pathjob_dir)
+        self.send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
 
     def get_job_output_dir(self, id):
         dir = os.path.join(OUTPUT_DIR, str(id))
