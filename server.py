@@ -40,17 +40,19 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             ortho_image_path = self.ortho_image_path_for_job_id(job_id)
             self.send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
             self.finish()
+            return
 
         ortho_in_progress = not self.is_work_dir_empty()
         if ortho_in_progress:
             logging.info("work dir is not empty, ortho in progress")
             self.set_status(429, "orthomosaic generation already in progress, please try again")
             self.finish()
-        else:
-            self.finish()
-            self.empty_odm_dirs()
-            self.download_urls(image_urls)
-            self.generate_ortho(job_id, endpoint)
+            return
+
+        self.finish()
+        self.empty_odm_dirs()
+        self.download_urls(image_urls)
+        self.generate_ortho(job_id, endpoint)
 
     def is_work_dir_empty(self):
         return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
