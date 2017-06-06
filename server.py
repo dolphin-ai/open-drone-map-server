@@ -84,6 +84,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         logging.info('Sending odm_orthophoto.png for project %s to %s', str(id), endpoint)
         try:
             r = requests.post(endpoint + '?id=' + str(id), files=files)
+        except:
             logging.info(r.text)
         finally:
             file.close()
