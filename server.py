@@ -171,8 +171,14 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 def main():
     parse_command_line()
 
+    if not os.path.exists(WORK_DIR):
+        os.makedirs(WORK_DIR)
+
     if not os.path.exists(LOGS_DIR):
         os.makedirs(LOGS_DIR)
+
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 
     routes = [
         (r"/", HealthCheckHandler),
