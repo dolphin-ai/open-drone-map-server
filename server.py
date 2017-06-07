@@ -55,6 +55,9 @@ def get_job_output_dir(id):
         os.makedirs(dir)
     return dir
 
+def ortho_process_succeeded():
+    return os.path.isfile('./odm_orthophoto/odm_orthophoto.png')
+
 def send_generated_ortho_to_requester(id, endpoint, image_path):
     file = open(image_path, 'rb')
     files = {'file': file}
@@ -67,6 +70,13 @@ def send_generated_ortho_to_requester(id, endpoint, image_path):
     finally:
         file.close()
         empty_work_dir()
+
+def send_error_message_to_requester(id, endpoint):
+    try:
+        r = requests.post(endpoint + '?id=' + id + '&error=true', files={})
+        logging.info(r.text)
+    except:
+        logging.info('exception caught')
 
 class HealthCheckHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
@@ -139,9 +149,15 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
-        ortho_image_path = ortho_image_path_for_job_id(id)
-        copyfile('./odm_orthophoto/odm_orthophoto.png', ortho_image_path)
-        send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
+        if ortho_process_succeeded():
+            logging.info('[job %s] ortho generation complete', id)
+            ortho_image_path = ortho_image_path_for_job_id(id)
+            copyfile('./odm_orthophoto/odm_orthophoto.png', ortho_image_path)
+            send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
+        else:
+            logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
+            send_error_message_to_requester(id, endpoint)
+            empty_work_dir()
 
 def main():
     parse_command_line()
