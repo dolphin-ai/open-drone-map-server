@@ -48,9 +48,12 @@ def empty_work_dir():
 def empty_odm_dirs():
     empty_dir(ODM_PHOTO_DIR)
     empty_dir(ODM_TEXTURE_DIR)
-    shutil.rmtree(IMAGES_DB_DIR)
-    shutil.rmtree(ODM_GEOREF_DIR)
-    shutil.rmtree(ODM_MESHING_DIR)
+    try:
+        shutil.rmtree(IMAGES_DB_DIR)
+        shutil.rmtree(ODM_GEOREF_DIR)
+        shutil.rmtree(ODM_MESHING_DIR)
+    except OSError:
+        logging.info('Could not delete all ODM dirs')
 
 def empty_dir(dir):
     for f in os.listdir(dir):
