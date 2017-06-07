@@ -180,6 +180,9 @@ def main():
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
+    if not os.path.exists(ODM_PHOTO_DIR):
+        os.makedirs(ODM_PHOTO_DIR)
+
     routes = [
         (r"/", HealthCheckHandler),
         (r"/run", RunOpenDroneMapHandler),
