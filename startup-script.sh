@@ -1,12 +1,6 @@
 #! /bin/sh
 cd /home/nicholashughes/open-drone-map-server
-sudo rm -rf $(pwd)/images $(pwd)/odm_orthophoto $(pwd)/odm_texturing
+sudo rm -rf $(pwd)/images $(pwd)/odm_orthophoto
 sudo git fetch --all && sudo git reset --hard origin/master
-sudo docker build -t dolphin-ai:odm .
-sudo docker run -d -p 80:5000 \
-  -v $(pwd)/logs:/code/logs \
-  -v $(pwd)/images:/code/images \
-  -v $(pwd)/jobs:/code/jobs \
-  -v $(pwd)/odm_orthophoto:/code/odm_orthophoto \
-  -v $(pwd)/odm_texturing:/code/odm_texturing \
-  dolphin-ai:odm
+sudo pip install --user -r requirements.txt
+sudo python server.py --port=80 >> logs/log 2>&1

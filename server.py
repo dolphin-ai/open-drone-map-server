@@ -17,18 +17,17 @@ from shutil import copyfile
 
 OPEN_SFM_PROCESSES = '8'
 
-WORK_DIR = '/code/images'
-OUTPUT_DIR = '/code/jobs'
-ODM_PHOTO_DIR = '/code/odm_orthophoto'
-ODM_TEXTURE_DIR = '/code/odm_texturing'
-IMAGES_DB_DIR = '/code/images_resize'
-ODM_GEOREF_DIR = '/code/odm_georeferencing'
-ODM_MESHING_DIR = '/code/odm_meshing'
+LOGS_DIR = 'logs'
+WORK_DIR = 'images'
+OUTPUT_DIR = 'jobs'
+ODM_PHOTO_DIR = 'odm_orthophoto'
 
-define("port", default=5000, help="run on the given port", type=int)
+define("port", default=80, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
 
 def is_work_dir_empty():
+    if not os.path.exists(WORK_DIR):
+        os.makedirs(WORK_DIR)
     return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
 
 def ortho_job_complete(job_id):
@@ -47,13 +46,6 @@ def empty_work_dir():
 
 def empty_odm_dirs():
     empty_dir(ODM_PHOTO_DIR)
-    empty_dir(ODM_TEXTURE_DIR)
-    try:
-        shutil.rmtree(IMAGES_DB_DIR)
-        shutil.rmtree(ODM_GEOREF_DIR)
-        shutil.rmtree(ODM_MESHING_DIR)
-    except OSError:
-        logging.info('Could not delete all ODM dirs')
 
 def empty_dir(dir):
     for f in os.listdir(dir):
@@ -66,7 +58,7 @@ def get_job_output_dir(id):
     return dir
 
 def ortho_process_succeeded():
-    return os.path.isfile('./odm_orthophoto/odm_orthophoto.png')
+    return os.path.isfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto.png'))
 
 def send_generated_ortho_to_requester(id, endpoint, image_path):
     file = open(image_path, 'rb')
@@ -153,16 +145,23 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def generate_ortho(self, id, endpoint):
         id = str(id)
-        odm_log = open("/code/logs/odm_log", "w")
-        subprocess.call(
-            ['python', '/code/run.py', '--opensfm-processes', OPEN_SFM_PROCESSES, 'code'],
+        odm_log = open("logs/odm_log", "w")
+        images_path= '%s/images:/code/images' % (os.getcwd())
+        output_path= '%s/odm_orthophoto:/code/odm_orthophoto' % (os.getcwd())
+        subprocess.call([
+            'docker', 'run', '-it', '--rm',
+            '-v', images_path,
+            '-v', output_path,
+            'opendronemap/opendronemap',
+            '--opensfm-processes', OPEN_SFM_PROCESSES
+            ],
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
         if ortho_process_succeeded():
             logging.info('[job %s] ortho generation complete', id)
             ortho_image_path = ortho_image_path_for_job_id(id)
-            copyfile('./odm_orthophoto/odm_orthophoto.png', ortho_image_path)
+            copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto.png'), ortho_image_path)
             send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
         else:
             logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
@@ -171,6 +170,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
 def main():
     parse_command_line()
+
+    if not os.path.exists(LOGS_DIR):
+        os.makedirs(LOGS_DIR)
 
     routes = [
         (r"/", HealthCheckHandler),
