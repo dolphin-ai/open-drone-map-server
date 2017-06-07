@@ -149,7 +149,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         images_path= '%s/images:/code/images' % (os.getcwd())
         output_path= '%s/odm_orthophoto:/code/odm_orthophoto' % (os.getcwd())
         subprocess.call([
-            'docker', 'run', '-it', '--rm',
+            'sudo', 'docker', 'run', '-i', '--rm',
             '-v', images_path,
             '-v', output_path,
             'opendronemap/opendronemap',
