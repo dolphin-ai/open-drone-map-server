@@ -12,6 +12,7 @@ import urllib2
 import requests
 import json
 import logging
+import shutil
 from shutil import copyfile
 
 OPEN_SFM_PROCESSES = '8'
@@ -20,6 +21,9 @@ WORK_DIR = '/code/images'
 OUTPUT_DIR = '/code/jobs'
 ODM_PHOTO_DIR = '/code/odm_orthophoto'
 ODM_TEXTURE_DIR = '/code/odm_texturing'
+IMAGES_DB_DIR = '/code/images_resize'
+ODM_GEOREF_DIR = '/code/odm_georeferencing'
+ODM_MESHING_DIR = '/code/odm_meshing'
 
 define("port", default=5000, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
@@ -44,6 +48,9 @@ def empty_work_dir():
 def empty_odm_dirs():
     empty_dir(ODM_PHOTO_DIR)
     empty_dir(ODM_TEXTURE_DIR)
+    shutil.rmtree(IMAGES_DB_DIR)
+    shutil.rmtree(ODM_GEOREF_DIR)
+    shutil.rmtree(ODM_MESHING_DIR)
 
 def empty_dir(dir):
     for f in os.listdir(dir):
@@ -66,7 +73,7 @@ def send_generated_ortho_to_requester(id, endpoint, image_path):
         r = requests.post(endpoint + '?id=' + id, files=files)
         logging.info(r.text)
     except:
-        logging.info('exception caught')
+        logging.info('[job %s] Unable to complete callback (%s)', id, endpoint)
     finally:
         file.close()
         empty_work_dir()
