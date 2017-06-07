@@ -24,9 +24,69 @@ ODM_TEXTURE_DIR = '/code/odm_texturing'
 define("port", default=5000, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
 
+def is_work_dir_empty():
+    return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
+
+def ortho_job_complete(job_id):
+    filepath = ortho_image_path_for_job_id(job_id)
+    return os.path.isfile(filepath)
+
+def ortho_image_path_for_job_id(job_id):
+    job_id = str(job_id)
+    job_dir = get_job_output_dir(job_id)
+    return os.path.join(job_dir, 'odm_orthophoto.png')
+
+def empty_work_dir():
+    logging.info('Emptying work dirs')
+    empty_dir(WORK_DIR)
+    empty_odm_dirs()
+
+def empty_odm_dirs():
+    empty_dir(ODM_PHOTO_DIR)
+    empty_dir(ODM_TEXTURE_DIR)
+
+def empty_dir(dir):
+    for f in os.listdir(dir):
+        os.remove(os.path.join(dir, f))
+
+def get_job_output_dir(id):
+    dir = os.path.join(OUTPUT_DIR, str(id))
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    return dir
+
+def send_generated_ortho_to_requester(id, endpoint, image_path):
+    file = open(image_path, 'rb')
+    files = {'file': file}
+    logging.info('Sending %s for project %s to %s', image_path, id, endpoint)
+    try:
+        r = requests.post(endpoint + '?id=' + id, files=files)
+        logging.info(r.text)
+    except:
+        logging.info('exception caught')
+    finally:
+        file.close()
+        empty_work_dir()
+
 class HealthCheckHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self):
+        self.finish()
+
+class RunJobCallbackHandler(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    def post(self):
+        req = json.loads(self.request.body)
+
+        job_id = str(req['id'])
+        endpoint = str(req['uploadOrthoEndpoint'])
+
+        if ortho_job_complete(job_id):
+            ortho_image_path = ortho_image_path_for_job_id(job_id)
+            send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
+            self.finish()
+            return
+
         self.finish()
 
 class RunOpenDroneMapHandler(tornado.web.RequestHandler):
@@ -38,49 +98,23 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         image_urls = req['urls']
         endpoint = str(req['uploadOrthoEndpoint'])
 
-        if self.ortho_job_complete(job_id):
-            ortho_image_path = self.ortho_image_path_for_job_id(job_id)
-            self.send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
+        if ortho_job_complete(job_id):
+            ortho_image_path = ortho_image_path_for_job_id(job_id)
+            send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
             self.finish()
             return
 
-        ortho_in_progress = not self.is_work_dir_empty()
+        ortho_in_progress = not is_work_dir_empty()
         if ortho_in_progress:
-            logging.info("work dir is not empty, ortho in progress")
+            logging.info("> work dir is not empty, ortho in progress")
             self.set_status(429, "orthomosaic generation already in progress, please try again")
             self.finish()
             return
 
         self.finish()
-        self.empty_odm_dirs()
+        empty_odm_dirs()
         self.download_urls(image_urls)
         self.generate_ortho(job_id, endpoint)
-
-    def is_work_dir_empty(self):
-        return len([name for name in os.listdir(WORK_DIR) if os.path.isfile(os.path.join(WORK_DIR, name))]) == 0
-
-    def ortho_job_complete(self, job_id):
-        filepath = self.ortho_image_path_for_job_id(job_id)
-        print 'filepath: ', filepath
-        return os.path.isfile(filepath)
-
-    def ortho_image_path_for_job_id(self, job_id):
-        job_id = str(job_id)
-        job_dir = self.get_job_output_dir(job_id)
-        return os.path.join(job_dir, 'odm_orthophoto.png')
-
-    def empty_work_dir(self):
-        logging.info('Emptying work dirs')
-        self.empty_dir(WORK_DIR)
-        self.empty_odm_dirs()
-
-    def empty_odm_dirs(self):
-        self.empty_dir(ODM_PHOTO_DIR)
-        self.empty_dir(ODM_TEXTURE_DIR)
-
-    def empty_dir(self, dir):
-        for f in os.listdir(dir):
-            os.remove(os.path.join(dir, f))
 
     def download_urls(self, urls):
         for image_url in urls:
@@ -105,29 +139,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
-        job_dir = self.get_job_output_dir(id)
-        ortho_image_path = os.path.join(job_dir, 'odm_orthophoto.png')
+        ortho_image_path = ortho_image_path_for_job_id(id)
         copyfile('./odm_orthophoto/odm_orthophoto.png', ortho_image_path)
-        self.send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
-
-    def get_job_output_dir(self, id):
-        dir = os.path.join(OUTPUT_DIR, str(id))
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        return dir
-
-    def send_generated_ortho_to_requester(self, id, endpoint, image_path):
-        file = open(image_path, 'rb')
-        files = {'file': file}
-        logging.info('Sending %s for project %s to %s', image_path, id, endpoint)
-        try:
-            r = requests.post(endpoint + '?id=' + id, files=files)
-            logging.info(r.text)
-        except:
-            logging.info('exception caught')
-        finally:
-            file.close()
-            self.empty_work_dir()
+        send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
 
 def main():
     parse_command_line()
@@ -135,6 +149,7 @@ def main():
     routes = [
         (r"/", HealthCheckHandler),
         (r"/run", RunOpenDroneMapHandler),
+        (r"/job", RunJobCallbackHandler),
     ]
     app = tornado.web.Application(
         routes,
