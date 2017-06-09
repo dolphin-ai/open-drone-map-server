@@ -15,7 +15,7 @@ import logging
 import shutil
 from shutil import copyfile
 
-OPEN_SFM_PROCESSES = '8'
+OPEN_SFM_PROCESSES = '16'
 
 LOGS_DIR = 'logs'
 WORK_DIR = 'images'
@@ -63,7 +63,7 @@ def ortho_process_succeeded():
 def send_generated_ortho_to_requester(id, endpoint, image_path):
     file = open(image_path, 'rb')
     files = {'file': file}
-    logging.info('Sending %s for project %s to %s', image_path, id, endpoint)
+    logging.info('Sending %s for job %s to %s', image_path, id, endpoint)
     try:
         r = requests.post(endpoint + '?id=' + id, files=files)
         logging.info(r.text)
@@ -110,12 +110,6 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         image_urls = req['urls']
         endpoint = str(req['uploadOrthoEndpoint'])
 
-        if ortho_job_complete(job_id):
-            ortho_image_path = ortho_image_path_for_job_id(job_id)
-            send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
-            self.finish()
-            return
-
         ortho_in_progress = not is_work_dir_empty()
         if ortho_in_progress:
             logging.info("> work dir is not empty, ortho in progress")
@@ -129,6 +123,9 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         self.generate_ortho(job_id, endpoint)
 
     def download_urls(self, urls):
+        if urls is None:
+            return
+
         for image_url in urls:
             logging.info("downloading %s", image_url)
             res = requests.head(image_url)
