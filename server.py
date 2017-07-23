@@ -143,12 +143,20 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
     def generate_ortho(self, id, endpoint):
         id = str(id)
         odm_log = open("logs/odm_log", "w")
-        images_path= '%s/images:/code/images' % (os.getcwd())
-        output_path= '%s/odm_orthophoto:/code/odm_orthophoto' % (os.getcwd())
+        images_path = '%s/images:/code/images' % (os.getcwd())
+        opensfm_path = '%s/opensfm:/code/opensfm' % (os.getcwd())
+        meshing_path = '%s/odm_meshing:/code/odm_meshing' % (os.getcwd())
+        texturing_path = '%s/odm_texturing:/code/odm_texturing' % (os.getcwd())
+        georeferencing_path = '%s/odm_georeferencing:/code/odm_georeferencing' % (os.getcwd())
+        orthophoto_path = '%s/odm_orthophoto:/code/odm_orthophoto' % (os.getcwd())
         subprocess.call([
             'sudo', 'docker', 'run', '-i', '--rm',
             '-v', images_path,
-            '-v', output_path,
+            '-v', opensfm_path,
+            '-v', meshing_path,
+            '-v', texturing_path,
+            '-v', georeferencing_path,
+            '-v', orthophoto_path,
             'opendronemap/opendronemap',
             '--opensfm-processes', OPEN_SFM_PROCESSES
             ],
