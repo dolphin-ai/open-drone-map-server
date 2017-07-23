@@ -188,6 +188,10 @@ def main():
     if not os.path.exists(ODM_PHOTO_DIR):
         os.makedirs(ODM_PHOTO_DIR)
 
+    for dir in ['opensfm', 'odm_meshing', 'odm_texturing', 'odm_georeferencing']:
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
     routes = [
         (r"/", HealthCheckHandler),
         (r"/run", RunOpenDroneMapHandler),
