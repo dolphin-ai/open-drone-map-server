@@ -14,6 +14,7 @@ import json
 import logging
 import shutil
 from shutil import copyfile
+from shutil import rmtree
 from decimal import Decimal
 
 OPEN_SFM_PROCESSES = '16'
@@ -63,6 +64,8 @@ def empty_dir(dir):
         fp = os.path.join(dir, f)
         if os.path.isfile(fp):
             os.remove(fp)
+        else:
+            rmtree(fp)
 
 def get_job_output_dir(id):
     dir = os.path.join(OUTPUT_DIR, str(id))
