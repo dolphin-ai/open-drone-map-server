@@ -14,6 +14,7 @@ import json
 import logging
 import shutil
 from shutil import copyfile
+from decimal import Decimal
 
 OPEN_SFM_PROCESSES = '16'
 
@@ -21,6 +22,7 @@ LOGS_DIR = 'logs'
 WORK_DIR = 'images'
 OUTPUT_DIR = 'jobs'
 ODM_PHOTO_DIR = 'odm_orthophoto'
+ODM_GEOREFERENCE_DIR = 'odm_georeferencing'
 
 define("port", default=80, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
@@ -60,12 +62,51 @@ def get_job_output_dir(id):
 def ortho_process_succeeded():
     return os.path.isfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto.png'))
 
+def utm_coords_filepath(job_id):
+    job_dir = get_job_output_dir(str(job_id))
+    return os.path.join(job_dir, 'odm_georeferencing_model_geo.txt')
+
+def utm_corners_filepath(job_id):
+    job_dir = get_job_output_dir(str(job_id))
+    return os.path.join(job_dir, 'odm_orthophoto_corners.txt')
+
+def parse_utm_coords(job_id):
+    utm = {}
+
+    with open(utm_coords_filepath(job_id), 'rb') as f:
+     for i, line in enumerate(f):
+         if i == 1:
+            coords = line.split()
+            utm['east'] = Decimal(coords[0])
+            utm['north'] = Decimal(coords[1])
+
+    with open(utm_corners_filepath(job_id), 'rb') as f:
+     for i, line in enumerate(f):
+         if i == 0:
+            corners = line.split()
+            utm['xMin'] = utm['east'] + Decimal(corners[0])
+            utm['yMin'] = utm['north'] + Decimal(corners[1])
+            utm['xMax'] = utm['east'] + Decimal(corners[2])
+            utm['yMax'] = utm['north'] + Decimal(corners[3])
+
+    return utm
+
 def send_generated_ortho_to_requester(id, endpoint, image_path):
+    utm = parse_utm_coords(id)
     file = open(image_path, 'rb')
     files = {'file': file}
     logging.info('Sending %s for job %s to %s', image_path, id, endpoint)
     try:
-        r = requests.post(endpoint + '?id=' + id, files=files)
+        query_string = '?id=%s&utmEast=%s&utmNorth=%s&utmXMin=%s&utmXMax=%s&utmYMin=%s&utmYMax=%s' % (
+            id,
+            utm['east'],
+            utm['north'],
+            utm['xMin'],
+            utm['xMax'],
+            utm['yMin'],
+            utm['yMax'],
+        )
+        r = requests.post(endpoint + query_string, files=files)
         logging.info(r.text)
     except:
         logging.info('[job %s] Unable to complete callback (%s)', id, endpoint)
@@ -165,8 +206,16 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         )
         if ortho_process_succeeded():
             logging.info('[job %s] ortho generation complete', id)
+
             ortho_image_path = ortho_image_path_for_job_id(id)
             copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto.png'), ortho_image_path)
+
+            utm_coords_fp = utm_coords_filepath(id)
+            copyfile(os.path.join(ODM_GEOREFERENCE_DIR, 'odm_georeferencing_model_geo.txt'), utm_coords_fp)
+
+            utm_corners_fp = utm_corners_filepath(id)
+            copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto_corners.txt'), utm_corners_fp)
+
             send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
         else:
             logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
