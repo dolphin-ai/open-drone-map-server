@@ -148,7 +148,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         req = json.loads(self.request.body)
 
         job_id = str(req['id'])
-        image_urls = req['urls']
+        images = req['images']
         endpoint = str(req['uploadOrthoEndpoint'])
 
         ortho_in_progress = not is_work_dir_empty()
@@ -160,23 +160,18 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
         self.finish()
         empty_odm_dirs()
-        self.download_urls(image_urls)
+        self.download_images(images)
         self.generate_ortho(job_id, endpoint)
 
-    def download_urls(self, urls):
-        if urls is None:
+    def download_images(self, images):
+        if images is None:
             return
 
-        for image_url in urls:
+        for image in images:
+            image_url = image['url']
             logging.info("downloading %s", image_url)
             res = requests.head(image_url)
-            content_type = res.headers['content-type']
-            ext = mimetypes.guess_extension(content_type)
-            if ext == '.jpe':
-                ext = '.jpg'
-
-            filename = str(uuid.uuid4()) + ext
-            filepath = os.path.join(WORK_DIR, filename)
+            filepath = os.path.join(WORK_DIR, image['filename'])
             image_file = urllib2.urlopen(image_url)
             with open(filepath, 'wb') as output:
               output.write(image_file.read())
