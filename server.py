@@ -60,7 +60,9 @@ def empty_all_odm_output_dirs():
 
 def empty_dir(dir):
     for f in os.listdir(dir):
-        os.remove(os.path.join(dir, f))
+        fp = os.path.join(dir, f)
+        if os.path.isfile(fp):
+            os.remove(fp)
 
 def get_job_output_dir(id):
     dir = os.path.join(OUTPUT_DIR, str(id))
