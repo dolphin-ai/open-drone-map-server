@@ -23,6 +23,9 @@ WORK_DIR = 'images'
 OUTPUT_DIR = 'jobs'
 ODM_PHOTO_DIR = 'odm_orthophoto'
 ODM_GEOREFERENCE_DIR = 'odm_georeferencing'
+ODM_TEXTURING_DIR = 'odm_texturing'
+ODM_MESHING_DIR = 'odm_meshing'
+OPENSFM_DIR = 'opensfm'
 
 define("port", default=80, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
@@ -48,6 +51,12 @@ def empty_work_dir():
 
 def empty_odm_dirs():
     empty_dir(ODM_PHOTO_DIR)
+
+def empty_all_odm_output_dirs():
+    empty_dir(ODM_GEOREFERENCE_DIR)
+    empty_dir(ODM_TEXTURING_DIR)
+    empty_dir(ODM_MESHING_DIR)
+    empty_dir(OPENSFM_DIR)
 
 def empty_dir(dir):
     for f in os.listdir(dir):
@@ -160,6 +169,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
         self.finish()
         empty_odm_dirs()
+        empty_all_odm_output_dirs()
         self.download_images(images)
         self.generate_ortho(job_id, endpoint)
 
