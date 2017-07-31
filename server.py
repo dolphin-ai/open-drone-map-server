@@ -288,7 +288,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             copyfile(os.path.join(OPENSFM_DIR, 'reconstruction.json'), reconstruction_json_fp)
 
             send_generated_ortho_to_requester(id, upload_endpoint, ortho_image_path)
-            send_source_image_rotations_to_requester(job_id, metadata_endpoint)
+            send_source_image_rotations_to_requester(id, metadata_endpoint)
         else:
             logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
             send_error_message_to_requester(id, upload_endpoint)
