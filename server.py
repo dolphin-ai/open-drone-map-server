@@ -16,6 +16,9 @@ import shutil
 from shutil import copyfile
 from shutil import rmtree
 from decimal import Decimal
+import cv2
+import math
+import numpy as np
 
 OPEN_SFM_PROCESSES = '16'
 
@@ -84,6 +87,10 @@ def utm_corners_filepath(job_id):
     job_dir = get_job_output_dir(str(job_id))
     return os.path.join(job_dir, 'odm_orthophoto_corners.txt')
 
+def reconstruction_json_filepath(job_id):
+    job_dir = get_job_output_dir(str(job_id))
+    return os.path.join(job_dir, 'reconstruction.json')
+
 def parse_utm_coords(job_id):
     utm = {}
 
@@ -128,6 +135,54 @@ def send_generated_ortho_to_requester(id, endpoint, image_path):
         file.close()
         empty_work_dir()
 
+def send_source_image_rotations_to_requester(id, endpoint):
+    output = {}
+
+    with open(reconstruction_json_filepath(id), 'rb') as f:
+        reconstruction = json.load(f)
+        shots = reconstruction[0]['shots']
+        for filename, shot in shots.iteritems():
+            print filename
+            rot = shot['rotation']
+            rot_matrix = cv2.Rodrigues(np.array(shot['rotation']))[0]
+            euler_angles = rotation_matrix_to_euler_angles(rot_matrix)
+            shot['euler_rotation'] = euler_angles.tolist()
+            output[filename] = shot
+
+    with open(reconstruction_json_filepath(id), 'w') as outfile:
+        json.dump(output, outfile)
+
+    fp = reconstruction_json_filepath(id)
+    file = open(fp, 'rb')
+    logging.info('[job %s] sending %s to %s', id, fp, id, endpoint)
+    print('[job %s] sending %s to %s', id, fp, id, endpoint)
+
+    try:
+        query_string = '?id=%s' % (id)
+        r = requests.post(endpoint + query_string, data=file)
+        logging.info(r.text)
+        print(r.text)
+    except:
+        logging.info('[job %s] unable to complete metadata callback (%s)', id, endpoint)
+        print('[job %s] unable to complete metadata callback (%s)', id, endpoint)
+    finally:
+        file.close()
+
+def rotation_matrix_to_euler_angles(rot):
+    sy = math.sqrt(rot[0,0] * rot[0,0] +  rot[1,0] * rot[1,0])
+    singular = sy < 1e-6
+
+    if not singular:
+        x = math.atan2(rot[2,1] , rot[2,2])
+        y = math.atan2(-rot[2,0], sy)
+        z = math.atan2(rot[1,0], rot[0,0])
+    else:
+        x = math.atan2(-rot[1,2], rot[1,1])
+        y = math.atan2(-rot[2,0], sy)
+        z = 0
+
+    return np.array([x, y, z])
+
 def send_error_message_to_requester(id, endpoint):
     try:
         r = requests.post(endpoint + '?id=' + id + '&error=true', files={})
@@ -146,11 +201,13 @@ class RunJobCallbackHandler(tornado.web.RequestHandler):
         req = json.loads(self.request.body)
 
         job_id = str(req['id'])
-        endpoint = str(req['uploadOrthoEndpoint'])
+        upload_endpoint = str(req['uploadOrthoEndpoint'])
+        metadata_endpoint = str(req['uploadMetadataEndpoint'])
 
         if ortho_job_complete(job_id):
             ortho_image_path = ortho_image_path_for_job_id(job_id)
-            send_generated_ortho_to_requester(job_id, endpoint, ortho_image_path)
+            send_generated_ortho_to_requester(job_id, upload_endpoint, ortho_image_path)
+            send_source_image_rotations_to_requester(job_id, metadata_endpoint)
             self.finish()
             return
 
@@ -163,7 +220,8 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
         job_id = str(req['id'])
         images = req['images']
-        endpoint = str(req['uploadOrthoEndpoint'])
+        upload_endpoint = str(req['uploadOrthoEndpoint'])
+        metadata_endpoint = str(req['uploadMetadataEndpoint'])
 
         ortho_in_progress = not is_work_dir_empty()
         if ortho_in_progress:
@@ -176,7 +234,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         empty_odm_dirs()
         empty_all_odm_output_dirs()
         self.download_images(images)
-        self.generate_ortho(job_id, endpoint)
+        self.generate_ortho(job_id, upload_endpoint, metadata_endpoint)
 
     def download_images(self, images):
         if images is None:
@@ -191,7 +249,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             with open(filepath, 'wb') as output:
               output.write(image_file.read())
 
-    def generate_ortho(self, id, endpoint):
+    def generate_ortho(self, id, upload_endpoint, metadata_endpoint):
         id = str(id)
         odm_log = open("logs/odm_log", "w")
         images_path = '%s/images:/code/images' % (os.getcwd())
@@ -226,10 +284,14 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             utm_corners_fp = utm_corners_filepath(id)
             copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto_corners.txt'), utm_corners_fp)
 
-            send_generated_ortho_to_requester(id, endpoint, ortho_image_path)
+            reconstruction_json_fp = reconstruction_json_filepath(id)
+            copyfile(os.path.join(OPENSFM_DIR, 'reconstruction.json'), reconstruction_json_fp)
+
+            send_generated_ortho_to_requester(id, upload_endpoint, ortho_image_path)
+            send_source_image_rotations_to_requester(job_id, metadata_endpoint)
         else:
             logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
-            send_error_message_to_requester(id, endpoint)
+            send_error_message_to_requester(id, upload_endpoint)
             empty_work_dir()
 
 def main():
