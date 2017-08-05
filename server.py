@@ -154,8 +154,8 @@ def send_source_image_rotations_to_requester(id, endpoint):
 
     fp = reconstruction_json_filepath(id)
     file = open(fp, 'rb')
-    logging.info('[job %s] sending %s to %s', id, fp, id, endpoint)
-    print('[job %s] sending %s to %s', id, fp, id, endpoint)
+    logging.info('[job %s] sending %s to %s', id, fp, endpoint)
+    print('[job %s] sending %s to %s', id, fp, endpoint)
 
     try:
         query_string = '?id=%s' % (id)
