@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import tornado.ioloop
 import subprocess
 import tornado.web
@@ -33,6 +34,19 @@ OPENSFM_DIR = 'opensfm'
 
 define("port", default=80, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
+
+STATE_READY = 'ready'
+STATE_WORKING = 'working'
+__current_state = STATE_READY
+
+def ready():
+    return __current_state == STATE_READY
+
+def busy():
+    return __current_state == STATE_WORKING
+
+def set_state(state):
+    current_state = state
 
 def is_work_dir_empty():
     if not os.path.exists(WORK_DIR):
@@ -130,7 +144,8 @@ def send_generated_ortho_to_requester(id, endpoint, image_path):
         r = requests.post(endpoint + query_string, files=files)
         logging.info(r.text)
     except:
-        logging.info('[job %s] Unable to complete callback (%s)', id, endpoint)
+        logging.info("[job %s] unexpected error: %s", id, str(sys.exc_info()[0]))
+        logging.info('[job %s] unable to complete callback (%s)', id, endpoint)
     finally:
         file.close()
         empty_work_dir()
@@ -163,6 +178,7 @@ def send_source_image_rotations_to_requester(id, endpoint):
         logging.info(r.text)
         print(r.text)
     except:
+        logging.info("[job %s] unexpected error: %s", id, str(sys.exc_info()[0]))
         logging.info('[job %s] unable to complete metadata callback (%s)', id, endpoint)
         print('[job %s] unable to complete metadata callback (%s)', id, endpoint)
     finally:
@@ -188,6 +204,7 @@ def send_error_message_to_requester(id, endpoint):
         r = requests.post(endpoint + '?id=' + id + '&error=true', files={})
         logging.info(r.text)
     except:
+        logging.info("[job %s] unexpected error: %s", str(id), str(sys.exc_info()[0]))
         logging.info('exception caught')
 
 class HealthCheckHandler(tornado.web.RequestHandler):
@@ -223,14 +240,15 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         upload_endpoint = str(req['uploadOrthoEndpoint'])
         metadata_endpoint = str(req['uploadMetadataEndpoint'])
 
-        ortho_in_progress = not is_work_dir_empty()
-        if ortho_in_progress:
-            logging.info("> work dir is not empty, ortho in progress")
+        if busy():
+            logging.info("> ortho job already in progress")
             self.set_status(429, "orthomosaic generation already in progress, please try again")
             self.finish()
             return
 
         self.finish()
+
+        set_state(STATE_WORKING)
         empty_odm_dirs()
         empty_all_odm_output_dirs()
         self.download_images(images)
@@ -251,6 +269,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
 
     def generate_ortho(self, id, upload_endpoint, metadata_endpoint):
         id = str(id)
+
         odm_log = open("logs/odm_log", "w")
         images_path = '%s/images:/code/images' % (os.getcwd())
         opensfm_path = '%s/opensfm:/code/opensfm' % (os.getcwd())
@@ -258,6 +277,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
         texturing_path = '%s/odm_texturing:/code/odm_texturing' % (os.getcwd())
         georeferencing_path = '%s/odm_georeferencing:/code/odm_georeferencing' % (os.getcwd())
         orthophoto_path = '%s/odm_orthophoto:/code/odm_orthophoto' % (os.getcwd())
+
         subprocess.call([
             'sudo', 'docker', 'run', '-i', '--rm',
             '-v', images_path,
@@ -272,27 +292,35 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             stdout=odm_log,
             stderr=subprocess.STDOUT
         )
-        if ortho_process_succeeded():
-            logging.info('[job %s] ortho generation complete', id)
 
-            ortho_image_path = ortho_image_path_for_job_id(id)
-            copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto.png'), ortho_image_path)
+        try:
+            if ortho_process_succeeded():
+                logging.info('[job %s] ortho generation complete', id)
 
-            utm_coords_fp = utm_coords_filepath(id)
-            copyfile(os.path.join(ODM_GEOREFERENCE_DIR, 'odm_georeferencing_model_geo.txt'), utm_coords_fp)
+                ortho_image_path = ortho_image_path_for_job_id(id)
+                copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto.png'), ortho_image_path)
 
-            utm_corners_fp = utm_corners_filepath(id)
-            copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto_corners.txt'), utm_corners_fp)
+                utm_coords_fp = utm_coords_filepath(id)
+                copyfile(os.path.join(ODM_GEOREFERENCE_DIR, 'odm_georeferencing_model_geo.txt'), utm_coords_fp)
 
-            reconstruction_json_fp = reconstruction_json_filepath(id)
-            copyfile(os.path.join(OPENSFM_DIR, 'reconstruction.json'), reconstruction_json_fp)
+                utm_corners_fp = utm_corners_filepath(id)
+                copyfile(os.path.join(ODM_PHOTO_DIR, 'odm_orthophoto_corners.txt'), utm_corners_fp)
 
-            send_generated_ortho_to_requester(id, upload_endpoint, ortho_image_path)
-            send_source_image_rotations_to_requester(id, metadata_endpoint)
-        else:
-            logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
-            send_error_message_to_requester(id, upload_endpoint)
-            empty_work_dir()
+                reconstruction_json_fp = reconstruction_json_filepath(id)
+                copyfile(os.path.join(OPENSFM_DIR, 'reconstruction.json'), reconstruction_json_fp)
+
+                send_generated_ortho_to_requester(id, upload_endpoint, ortho_image_path)
+                send_source_image_rotations_to_requester(id, metadata_endpoint)
+            else:
+                logging.info('[job %s] ortho generation failed, see logs/odm_log', id)
+                send_error_message_to_requester(id, upload_endpoint)
+                empty_work_dir()
+
+        except:
+            logging.info("[job %s] unexpected error: %s", id, str(sys.exc_info()[0]))
+
+        finally:
+            set_state(STATE_READY)
 
 def main():
     parse_command_line()
