@@ -287,7 +287,8 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             '-v', georeferencing_path,
             '-v', orthophoto_path,
             'opendronemap/opendronemap',
-            '--opensfm-processes', OPEN_SFM_PROCESSES
+            '--opensfm-processes', OPEN_SFM_PROCESSES,
+            '--skip-resize'
             ],
             stdout=odm_log,
             stderr=subprocess.STDOUT
