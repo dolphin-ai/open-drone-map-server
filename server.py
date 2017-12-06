@@ -262,7 +262,7 @@ class RunOpenDroneMapHandler(tornado.web.RequestHandler):
             image_url = image['url']
             logging.info("downloading %s", image_url)
             res = requests.head(image_url)
-            filepath = os.path.join(WORK_DIR, image['display_filename'])
+            filepath = os.path.join(WORK_DIR, image['displayFilename'])
             image_file = urllib2.urlopen(image_url)
             with open(filepath, 'wb') as output:
               output.write(image_file.read())
