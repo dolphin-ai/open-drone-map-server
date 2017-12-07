@@ -184,6 +184,24 @@ def send_source_image_rotations_to_requester(id, endpoint):
     finally:
         file.close()
 
+def send_processed_reconstruction_to_requester(id, endpoint):
+    fp = reconstruction_json_filepath(id)
+    file = open(fp, 'rb')
+    logging.info('[job %s] sending %s to %s', id, fp, endpoint)
+    print('[job %s] sending %s to %s', id, fp, endpoint)
+
+    try:
+        query_string = '?id=%s' % (id)
+        r = requests.post(endpoint + query_string, data=file)
+        logging.info(r.text)
+        print(r.text)
+    except:
+        logging.info("[job %s] unexpected error: %s", id, str(sys.exc_info()[0]))
+        logging.info('[job %s] unable to complete metadata callback (%s)', id, endpoint)
+        print('[job %s] unable to complete metadata callback (%s)', id, endpoint)
+    finally:
+        file.close()
+
 def rotation_matrix_to_euler_angles(rot):
     sy = math.sqrt(rot[0,0] * rot[0,0] +  rot[1,0] * rot[1,0])
     singular = sy < 1e-6
@@ -224,7 +242,7 @@ class RunJobCallbackHandler(tornado.web.RequestHandler):
         if ortho_job_complete(job_id):
             ortho_image_path = ortho_image_path_for_job_id(job_id)
             send_generated_ortho_to_requester(job_id, upload_endpoint, ortho_image_path)
-            send_source_image_rotations_to_requester(job_id, metadata_endpoint)
+            send_processed_reconstruction_to_requester(job_id, metadata_endpoint)
             self.finish()
             return
 
